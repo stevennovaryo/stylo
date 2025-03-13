@@ -1130,6 +1130,26 @@ impl ElementAnimationSet {
     }
 
     /// Generate a `AnimationValueMap` for this `ElementAnimationSet`'s
+    /// active transitions at the given time value.
+    pub fn get_value_map_for_ongoing_transitions(&self, now: f64) -> Option<AnimationValueMap> {
+        if !self.has_active_transition() {
+            return None;
+        }
+
+        let mut map =
+            AnimationValueMap::with_capacity_and_hasher(self.transitions.len(), Default::default());
+        for transition in &self.transitions {
+            if transition.state == AnimationState::Canceled || transition.state == AnimationState::Finished {
+                continue;
+            }
+            let value = transition.calculate_value(now);
+            map.insert(value.id().to_owned(), value);
+        }
+
+        Some(map)
+    }
+
+    /// Generate a `AnimationValueMap` for this `ElementAnimationSet`'s
     /// active animations at the given time value.
     pub fn get_value_map_for_active_animations(&self, now: f64) -> Option<AnimationValueMap> {
         if !self.has_active_animation() {
@@ -1236,6 +1256,24 @@ impl DocumentAnimationSet {
             .read()
             .get(key)
             .and_then(|set| set.get_value_map_for_active_transitions(time))
+            .map(|map| {
+                let block = PropertyDeclarationBlock::from_animation_value_map(&map);
+                Arc::new(shared_lock.wrap(block))
+            })
+    }
+
+    /// Return a locked PropertyDeclarationBlock with transition values for the given
+    /// key and time.
+    pub fn get_ongoing_transition_declarations(
+        &self,
+        key: &AnimationSetKey,
+        time: f64,
+        shared_lock: &SharedRwLock,
+    ) -> Option<Arc<Locked<PropertyDeclarationBlock>>> {
+        self.sets
+            .read()
+            .get(key)
+            .and_then(|set| set.get_value_map_for_ongoing_transitions(time))
             .map(|map| {
                 let block = PropertyDeclarationBlock::from_animation_value_map(&map);
                 Arc::new(shared_lock.wrap(block))
