@@ -130,6 +130,9 @@ bitflags! {
         /// https://html.spec.whatwg.org/#selector-popover-open
         /// Match element's popover visibility state of showing
         const POPOVER_OPEN = 1u64 << 47;
+        /// Is a text editing root of <input> or <textarea> element.
+        /// We will need to resolve caret and selection for them.
+        const TEXT_EDITING_ROOT = 1u64 << 48;
 
         /// Some convenience unions.
         const DIR_STATES = Self::LTR.bits() | Self::RTL.bits();
